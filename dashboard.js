@@ -34,7 +34,7 @@
     el('gpSignal').querySelector('strong').textContent=strong;
     el('gpReason').textContent=reason;
     const status=text('status');
-    const connected=status.includes('متصل');
+    const connected=status.includes('متصل')&&!status.includes('غير متصل');
     el('gpConnection').textContent=connected?'متصل':'غير متصل';
     const ema=text('ema').split('/').map(v=>Number(v.trim()));
     const rsi=Number(text('rsi'));
