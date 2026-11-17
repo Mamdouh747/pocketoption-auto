@@ -1,13 +1,9 @@
-# PO Auto Signals
-واجهة PWA عربية أولية لتحليل إشارات التداول.
+# PO Auto Signals — biquote API update
 
-## التشغيل
-1. ارفع الملفات إلى مستودع GitHub أو استضافة HTTPS.
-2. فعّل GitHub Pages من إعدادات المستودع (Settings > Pages).
-3. افتح رابط الموقع في Safari على iPhone ثم مشاركة > إضافة إلى الشاشة الرئيسية.
-4. من الإعدادات أدخل عنوان WebSocket واشتراك مزود الأسعار حسب توثيقه.
-
-## صيغة بيانات افتراضية
-`{"symbol":"XAUUSD","price":3883.12,"time":1730000000000}`
-
-لا يتضمن التطبيق مزود أسعار، ولا ينفذ صفقات، ولا يطلب بيانات دخول Pocket Option. التحليل الأولي يستخدم EMA 5/13 وRSI 7 والزخم. يجب اختباره على حساب تجريبي؛ الإشارات ليست ضماناً للربح.
+- Arabic PWA interface.
+- Uses the public biquote REST API at `https://biquote.io/api`.
+- Loads closed 1-minute OHLC bars to seed EMA 5/13 and RSI 7, then checks latest quote every 5 seconds.
+- Rejects stale/closed-market quotes for live signal calculation.
+- No Pocket Option login, no trade execution, and no API key required for public read endpoints.
+- Some index symbols vary by provider. If a symbol returns 404, check the provider's symbol catalogue and choose its exact ticker.
+- Market data is third-party and may differ from a broker's OTC feed. Test only in demo first.
