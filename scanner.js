@@ -45,7 +45,7 @@
         const hist = await getJSON(apiBase+'/'+encodeURIComponent(s.symbol)+'/ohlc?interval=1m&limit=80');
         if (Array.isArray(hist.bars)) {
           const bars = hist.bars.filter(b=>!b.isOpen&&Number(b.close)>0&&Number.isFinite(Number(b.close))).reverse();
-          s.prices = bars.map(b=>Number(b.close)).slice(-80);
+          s.prices = bars.map(b=>Number(b.close)).slice(-80); const lastBar=bars[bars.length-1]; s.lastBucket=lastBar&&Date.parse(lastBar.openTime)?Math.floor(Date.parse(lastBar.openTime)/60000)*60000:undefined;
         }
       } catch (e) { s.reason='تعذر تحميل الشموع: '+e.message; }
       s.seeded = true;
