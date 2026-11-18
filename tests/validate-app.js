@@ -26,6 +26,7 @@ assert.match(html, /id="scanStart"/);
 assert.doesNotMatch(html, /id="gptPanel"/); // dashboard creates this panel at runtime
 assert.match(html, /dashboard\.css/);
 assert.match(html, /dashboard\.js/);
+assert.match(html, /trade-manager\.js/);
 assert.match(html, /id="manualCall"/);
 assert.match(html, /id="manualPut"/);
 assert.match(app, /التنفيذ اليدوي فقط/);
@@ -40,7 +41,7 @@ assert.equal(indicators.rsi(Array.from({length:40},(_,i)=>140-i),7),0);
 assert.match(scanner, /نحتاج 30 شمعة مكتملة/);
 assert.match(scanner, /Math\.floor\(t\/60000\)\*60000/);
 assert.match(fs.readFileSync('sw.js','utf8'), /po-auto-signals-v6/);
-assert.match(fs.readFileSync('sw.js','utf8'), /trade-manager\\.js/);
+assert.match(fs.readFileSync('sw.js','utf8'), /trade-manager\.js/);
 assert.match(tradeManager, /تسجيل الصفقة المفتوحة/);
 assert.match(tradeManager, /poQuickTradeJournalV1/);
 console.log('Unified PRO dashboard validation passed.');
