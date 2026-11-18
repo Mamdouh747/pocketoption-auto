@@ -32,6 +32,13 @@
       const age = s.time ? new Date(s.time).toLocaleTimeString('ar-SA') : 'بانتظار البيانات';
       return '<div class="scan-row"><span><b>'+label+'</b><span class="scan-meta">'+asset+(s.symbol?' · '+s.symbol:'')+'</span></span><span>'+price+'<span class="scan-meta">'+age+'</span></span><b class="'+cls+'">'+sig+'<span class="scan-meta">'+(s.reason||'لم يتم الفحص')+'</span></b></div>';
     }).join('');
+    // Publish each scanner snapshot for the local demo engine; this never sends broker orders.
+    for (const [asset, s] of state.entries()) {
+      window.dispatchEvent(new CustomEvent('po:scan-update', {detail:{
+        asset, signal:s.signal||'WAIT', price:Number.isFinite(s.price)?s.price:null,
+        time:s.time||0, reason:s.reason||''
+      }}));
+    }
     rows.innerHTML = '<div class="scan-row scan-head"><span>السوق</span><span>السعر</span><span>الإشارة</span></div>'+items;
   };
   const scanOne = async ([asset]) => {
