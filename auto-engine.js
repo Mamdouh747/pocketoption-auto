@@ -39,6 +39,7 @@
   function process(d){
     if(!d||!d.asset||!Number.isFinite(d.price)||!d.time)return;
     const now=Date.now();
+    if(now-d.time>60000||d.time-now>30000)return;
     for(const t of openTrades()){
       if(t.asset!==d.asset||now-t.openedMs< t.duration*1000)continue;
       t.status='closed';t.closed=new Date().toISOString();
@@ -47,10 +48,12 @@
       t.exit=d.price;t.result=win?'win':'loss';
       state.balance+=t.pnl;
     }
-    if(state.enabled&&now-d.time<60000&&d.signal!=='WAIT'&&!openTrades().some(t=>t.asset===d.asset)){
+    const lastEntry=Number(state.lastEntryByAsset?.[d.asset]||0);
+    if(state.enabled&&now-d.time<60000&&d.signal!=='WAIT'&&now-lastEntry>=60000&&!openTrades().some(t=>t.asset===d.asset)){
       const pnl=dayPnl(),limit=lossLimit();
       if(!(limit>0&&pnl<=-limit)&&stake()>0&&state.balance>0){
         state.trades.unshift({asset:d.asset,side:d.signal,entry:d.price,stake:Math.min(stake(),state.balance),payout:state.payout,duration:state.duration,opened:new Date().toISOString(),openedMs:now,day:today(),status:'open',pnl:0});
+        state.lastEntryByAsset={...(state.lastEntryByAsset||{}),[d.asset]:now};
       }
     }
     state.trades=state.trades.slice(0,200);localStorage.setItem(KEY,JSON.stringify(state));render();
