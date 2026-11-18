@@ -15,3 +15,11 @@
 - The CALL/PUT panel is manual-only and opens Pocket Option for the user to verify and place orders. It does not authenticate to the broker, read account balance, or submit trades.
 - Broker account control is not enabled: no public, documented Quick Trading API was verified, and Pocket Option terms reserve the right to cancel results involving unauthorized bot software.
 - Automated execution can be explored separately through an officially supported MT5 Expert Advisor workflow, subject to account availability and demo testing.
+
+
+## Quick Trading journal and risk controls
+- Adds a local manual trade journal for Quick Trading: asset, CALL/PUT, stake, duration, entry price, payout, and manually recorded outcome.
+- Tracks manually entered reference balance, estimated balance, daily P/L, per-trade stake cap, and daily loss threshold.
+- Trade records are stored locally in the browser and can be exported as CSV; no broker credentials or session tokens are requested.
+- This is not a live account connection: balance and trade status are user-entered, and no orders are sent to Pocket Option.
+- A manual trade must be confirmed by the user before it is added to the journal. Risk limits are app-side warnings/guards only and cannot stop trades inside the broker terminal.
