@@ -1,0 +1,26 @@
+name: Validate PO Auto Signals
+
+on:
+  push:
+    branches:
+      - main
+      - feature/unified-pro-dashboard
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Validate unified app
+        run: node tests/validate-app.js
