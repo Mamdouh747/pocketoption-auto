@@ -21,7 +21,7 @@ assert.match(html, /microsoft-signalr\/8\.0\.0\/signalr\.min\.js/);
 assert.match(app, /HubConnectionBuilder/);
 assert.match(app, /startPolling\(\)/);
 assert.match(html, /id="scanStart"/);
-assert.match(html, /id="gptPanel"/) === false; // dashboard creates this panel at runtime
+assert.doesNotMatch(html, /id="gptPanel"/); // dashboard creates this panel at runtime
 assert.match(html, /dashboard\.css/);
 assert.match(html, /dashboard\.js/);
 assert.match(html, /id="manualCall"/);
