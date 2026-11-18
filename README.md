@@ -15,3 +15,5 @@
 - PWA cache version is bumped when the app is updated so installed clients can receive the new files.
 
 Signals are heuristic indicators, not guaranteed trade instructions. Validate each symbol against the provider's live catalogue and test in a demo environment before relying on it.
+
+- The DAX40 selector also resolves to the provider's documented market-page ticker `DE30` when that is the active symbol.
