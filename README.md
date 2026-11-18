@@ -2,7 +2,7 @@
 
 - Arabic PWA interface.
 - Uses the public biquote REST API at `https://biquote.io/api`.
-- Loads closed 1-minute OHLC bars to seed EMA 5/13 and RSI 7, then checks latest quote every 5 seconds.
+- Loads closed OHLC bars for the selected 1m, 5m, 15m, 30m or 1h timeframe to seed EMA 5/13 and RSI 7, then refreshes the current timeframe sample from the latest quote every 5 seconds.
 - Rejects stale/closed-market quotes for live signal calculation.
 - No Pocket Option login, no trade execution, and no API key required for public read endpoints.
 - Some index symbols vary by provider. If a symbol returns 404, check the provider's symbol catalogue and choose its exact ticker.
@@ -11,7 +11,7 @@
 - Fixed active-symbol parsing to match the documented `/api/active` response (`name`/`symbol`), so valid instruments are not rejected for missing undocumented flags.
 - Added optional browser audio alerts for CALL/PUT, with an in-app sound test and a user-controlled setting.
 - Signal history is saved locally on the device (up to 500 entries) and remains exportable as CSV.
-- Rejects stale quotes and out-of-order timestamps before they can affect the analysis; live quotes update the current one-minute sample instead of mixing five-second ticks into the one-minute indicator series.
+- Rejects stale quotes and out-of-order timestamps before they can affect the analysis; live quotes update the current selected-timeframe sample instead of mixing five-second polls into the candle indicator series.
 - PWA cache version is bumped when the app is updated so installed clients can receive the new files.
 
 Signals are heuristic indicators, not guaranteed trade instructions. Validate each symbol against the provider's live catalogue and test in a demo environment before relying on it.
