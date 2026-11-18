@@ -3,6 +3,7 @@
   const KEY='poQuickTradeJournalV1';
   const read=()=>{try{return JSON.parse(localStorage.getItem(KEY))||{balance:0,riskPct:1,dailyLossPct:3,mode:'demo',trades:[]}}catch{return{balance:0,riskPct:1,dailyLossPct:3,mode:'demo',trades:[]}}};
   let state=read();
+  let autoEnabled=false,autoLastSignal='WAIT',autoTimer=null;
   const money=n=>Number(n||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
   const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const today=()=>new Date().toLocaleDateString('en-CA');
@@ -14,13 +15,14 @@
   function render(){
     let root=document.getElementById('poTradeManager');if(!root)return;
     const dayPnl=pnl(),limit=maxLoss(),lossReached=dayPnl<=-limit&&limit>0;
-    const rows=state.trades.slice(0,25).map(t=>`<div class="pt-row"><div><b>${esc(t.asset)} · ${t.side==='CALL'?'CALL':'PUT'}</b><small>${new Date(t.time).toLocaleString('ar-SA')} · ${money(t.amount)}$ · ${esc(t.duration)} ث</small><small>دخول: ${esc(t.entry||'—')} · عائد: ${esc(t.payout)}%</small></div><div class="pt-actions">${t.result==='open'?'<span class="pt-open">مفتوحة يدوياً</span>':`<b class="${t.pnl>0?'pt-win':t.pnl<0?'pt-loss':''}">${t.pnl>0?'+':''}${money(t.pnl)}$</b><small>${t.result==='win'?'ربح':t.result==='loss'?'خسارة':'استرداد'}</small>`}</div>${t.result==='open'?`<div class="pt-result"><button data-result="win" data-id="${t.id}">ربح</button><button data-result="loss" data-id="${t.id}">خسارة</button><button data-result="refund" data-id="${t.id}">استرداد</button></div>`:''}</div>`).join('');
+    const rows=state.trades.slice(0,25).map(t=>`<div class="pt-row"><div><b>${esc(t.asset)} · ${t.side==='CALL'?'CALL':'PUT'}</b><small>${new Date(t.time).toLocaleString('ar-SA')} · ${money(t.amount)}$ · ${esc(t.duration)} ث</small><small>دخول: ${esc(t.entry||'—')} · عائد: ${esc(t.payout)}%</small></div><div class="pt-actions">${t.result==='open'?`<span class="pt-open">${t.auto?'محاكاة آلية مفتوحة':'مفتوحة يدوياً'}</span>`:`<b class="${t.pnl>0?'pt-win':t.pnl<0?'pt-loss':''}">${t.pnl>0?'+':''}${money(t.pnl)}$</b><small>${t.result==='win'?'ربح':t.result==='loss'?'خسارة':'استرداد'}</small>`}</div>${t.result==='open'?`<div class="pt-result"><button data-result="win" data-id="${t.id}">ربح</button><button data-result="loss" data-id="${t.id}">خسارة</button><button data-result="refund" data-id="${t.id}">استرداد</button></div>`:''}</div>`).join('');
     root.innerHTML=`
       <div class="pt-head"><b>إدارة الصفقات · Quick Trading</b><span class="pt-pill">${state.mode==='demo'?'تجريبي':'حقيقي'} · تسجيل يدوي</span></div>
       <p class="pt-note">هذه لوحة متابعة محلية وليست اتصالاً بحساب الوسيط. لا تقرأ الرصيد أو الصفقات من Pocket Option. سجّل الصفقة بعد تنفيذها بنفسك داخل المنصة، ثم حدّث نتيجتها هنا.</p>
       <div class="pt-stats"><div><small>الرصيد المرجعي</small><b>${money(state.balance)}$</b></div><div><small>الرصيد التقديري</small><b>${money(Number(state.balance)+state.trades.reduce((a,t)=>a+Number(t.pnl||0),0))}$</b></div><div><small>نتيجة اليوم</small><b class="${dayPnl>=0?'pt-win':'pt-loss'}">${dayPnl>0?'+':''}${money(dayPnl)}$</b></div></div>
       <div class="pt-settings"><label>نوع الحساب<select id="ptMode"><option value="demo" ${state.mode==='demo'?'selected':''}>Demo تجريبي</option><option value="live" ${state.mode==='live'?'selected':''}>Real حقيقي</option></select></label><label>الرصيد المرجعي ($)<input id="ptBalance" type="number" min="0" step="0.01" value="${esc(state.balance)}"></label><label>حد الصفقة (% من الرصيد)<input id="ptRisk" type="number" min="0.1" max="10" step="0.1" value="${esc(state.riskPct)}"></label><label>حد خسارة اليوم (%)<input id="ptDaily" type="number" min="0.5" max="30" step="0.5" value="${esc(state.dailyLossPct)}"></label></div>
       <div class="pt-limits"><span>حد المبلغ المقترح للصفقة: <b>${money(maxRisk())}$</b></span><span>حد خسارة اليوم: <b>${money(limit)}$</b></span><span>الصفقات المفتوحة المسجلة: <b>${open().length}</b></span></div>
+      <div class="pt-auto"><div class="pt-head"><b>محرك التداول الآلي التجريبي</b><span class="pt-pill">محاكاة فقط · Demo</span></div><p class="pt-note">ينفذ صفقات افتراضية داخل سجل هذا التطبيق عند وصول إشارة CALL أو PUT وسعر حديث. لا يتصل بالوسيط ولا يرسل أوامر إلى Pocket Option. النتائج محاكاة وليست نتائج حساب حقيقي.</p><div class="pt-fields"><label>مدة المحاكاة (ثانية)<input id="ptAutoDuration" type="number" min="5" max="3600" step="5" value="60"></label><label>العائد الافتراضي (%)<input id="ptAutoPayout" type="number" min="0" max="100" step="1" value="90"></label></div><div id="ptAutoStatus" class="pt-auto-status">المحرك متوقف · بانتظار التفعيل</div><button id="ptAutoToggle" class="pt-add">تشغيل المحاكاة الآلية</button></div>
       ${lossReached?'<div class="pt-stop">تم بلوغ حد خسارة اليوم المسجل. أوقف التداول وراجع النتائج قبل أي صفقة جديدة.</div>':''}
       <div class="pt-form"><b>تسجيل صفقة نفّذتها يدوياً</b><div class="pt-fields"><label>الأصل<input id="ptAsset" value="${esc(document.getElementById('asset')?.value||'XAUUSD')}"></label><label>الاتجاه<select id="ptSide"><option value="CALL">CALL شراء</option><option value="PUT">PUT بيع</option></select></label><label>المبلغ ($)<input id="ptAmount" type="number" min="0.01" step="0.01" placeholder="مثال 1"></label><label>المدة (ثانية)<input id="ptDuration" type="number" min="5" step="5" value="60"></label><label>سعر الدخول<input id="ptEntry" inputmode="decimal" placeholder="اختياري"></label><label>نسبة العائد (%)<input id="ptPayout" type="number" min="0" max="1000" value="90"></label></div><label class="pt-check"><input type="checkbox" id="ptConfirmed"> أؤكد أنني نفّذت الصفقة يدوياً في منصة Pocket Option</label><button id="ptAdd" class="pt-add" ${lossReached?'disabled':''}>تسجيل الصفقة المفتوحة</button><small class="pt-note">يمنع السجل التسجيل إذا تجاوز مبلغ الصفقة الحد المحدد أو تم بلوغ حد خسارة اليوم. هذه حدود تنبيه داخل التطبيق فقط ولا تتحكم في الوسيط.</small></div>
       <div class="pt-head"><b>سجل الصفقات</b><button id="ptExport">تصدير CSV</button></div><div class="pt-list">${rows||'<p class="pt-note">لا توجد صفقات مسجلة بعد.</p>'}</div>
@@ -30,6 +32,7 @@
     root.querySelector('#ptBalance').onchange=e=>{state.balance=Math.max(0,Number(e.target.value)||0);save()};
     root.querySelector('#ptRisk').onchange=e=>{state.riskPct=Math.min(10,Math.max(.1,Number(e.target.value)||1));save()};
     root.querySelector('#ptDaily').onchange=e=>{state.dailyLossPct=Math.min(30,Math.max(.5,Number(e.target.value)||3));save()};
+    root.querySelector('#ptAutoToggle').onclick=()=>{if(autoEnabled){autoEnabled=false;autoLastSignal='WAIT';root.querySelector('#ptAutoToggle').textContent='تشغيل المحاكاة الآلية';root.querySelector('#ptAutoStatus').textContent='المحرك متوقف؛ لن تفتح صفقات جديدة.';return}if(state.mode!=='demo'){alert('المحاكاة الآلية متاحة في وضع Demo فقط. غيّر نوع الحساب إلى تجريبي أولاً.');return}if(!(state.balance>0)){alert('أدخل رصيداً تجريبياً أكبر من صفر أولاً.');return}autoEnabled=true;autoLastSignal='WAIT';root.querySelector('#ptAutoToggle').textContent='إيقاف المحاكاة الآلية';root.querySelector('#ptAutoStatus').textContent='المحرك يعمل؛ ينتظر إشارة وسعراً حديثاً.';runAutoEngine()};
     root.querySelector('#ptAdd').onclick=()=>{
       const amount=Number(root.querySelector('#ptAmount').value),duration=Number(root.querySelector('#ptDuration').value),payout=Number(root.querySelector('#ptPayout').value);
       if(!root.querySelector('#ptConfirmed').checked){alert('أكد أولاً أنك نفذت الصفقة يدوياً داخل المنصة.');return}
@@ -43,6 +46,42 @@
     root.querySelector('#ptOpenBroker').onclick=()=>window.open('https://pocketoption.com/en/','_blank','noopener');
     root.querySelector('#ptClear').onclick=()=>{if(confirm('هل تريد مسح سجل الصفقات المحفوظ على هذا الجهاز؟')){state.trades=[];save()}};
     root.querySelector('#ptExport').onclick=()=>{const lines=[['date','asset','side','amount','duration_seconds','entry','payout_percent','result','pnl'],...state.trades.map(t=>[t.time,t.asset,t.side,t.amount,t.duration,t.entry,t.payout,t.result,t.pnl])];const csv='\\ufeff'+lines.map(r=>r.map(v=>'"'+String(v??'').replace(/"/g,'""')+'"').join(',')).join('\\n');const a=document.createElement('a'),url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));a.href=url;a.download='po-quick-trades.csv';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)};
+  }
+  function runAutoEngine(){
+    const status=document.getElementById('ptAutoStatus');
+    if(!status)return;
+    const snap=window.POAutoSignals?.getSnapshot?.();
+    const active=state.trades.find(t=>t.auto&&t.result==='open');
+    if(active){
+      if(Date.now()>=Number(active.expiresAt||0)){
+        if(!snap?.connected||!Number.isFinite(snap.price)){status.textContent='انتهت المدة؛ ننتظر سعراً حديثاً لإغلاق المحاكاة بأمان.';return}
+        const delta=Number(snap.price)-Number(active.entry);
+        const won=active.side==='CALL'?delta>0:delta<0;
+        active.result=delta===0?'refund':won?'win':'loss';
+        active.pnl=won?active.amount*active.payout/100:delta===0?0:-active.amount;
+        active.closedAt=new Date().toISOString();
+        active.exit=Number(snap.price);
+        save();
+        status.textContent='اكتملت المحاكاة: '+(won?'ربح افتراضي':delta===0?'استرداد افتراضي':'خسارة افتراضية')+'.';
+      }else status.textContent='صفقة محاكاة '+active.side+' قيد المتابعة؛ المتبقي '+Math.max(0,Math.ceil((active.expiresAt-Date.now())/1000))+' ثانية.';
+      return;
+    }
+    if(!autoEnabled){status.textContent='المحرك متوقف؛ لن تفتح صفقات جديدة.';return}
+    const limit=maxLoss();
+    if(limit>0&&pnl()<=-limit){autoEnabled=false;render();const s=document.getElementById('ptAutoStatus');if(s)s.textContent='توقف تلقائي: تم بلوغ حد الخسارة اليومية.';return}
+    if(state.mode!=='demo'){autoEnabled=false;render();return}
+    if(!snap?.connected||!['CALL','PUT'].includes(snap.signal)||!Number.isFinite(snap.price)){status.textContent='بانتظار اتصال أسعار حديث وإشارة مكتملة؛ لا توجد صفقة.';autoLastSignal='WAIT';return}
+    if(snap.signal===autoLastSignal){status.textContent='المحرك يعمل؛ ينتظر إشارة جديدة مختلفة.';return}
+    autoLastSignal=snap.signal;
+    const amount=Math.min(maxRisk(),Number(state.balance));
+    const duration=Math.max(5,Math.min(3600,Number(document.getElementById('ptAutoDuration')?.value)||60));
+    const payout=Math.max(0,Math.min(100,Number(document.getElementById('ptAutoPayout')?.value)||90));
+    if(!(amount>0)){autoEnabled=false;status.textContent='توقف: مبلغ المحاكاة المسموح به يساوي صفراً.';return}
+    const now=Date.now();
+    state.trades.unshift({id:'auto-'+now+'-'+Math.random().toString(36).slice(2,7),time:new Date(now).toISOString(),day:today(),asset:snap.asset||snap.symbol,side:snap.signal,amount,duration,payout,entry:Number(snap.price),result:'open',pnl:0,auto:true,expiresAt:now+duration*1000});
+    state.trades=state.trades.slice(0,500);
+    save();
+    const s=document.getElementById('ptAutoStatus');if(s)s.textContent='محاكاة '+snap.signal+' على '+(snap.asset||snap.symbol)+' بمبلغ '+money(amount)+'$؛ لا يوجد أمر حقيقي لدى الوسيط.';
   }
   function init(){
     if(!document.getElementById('manualTradeCard')||document.getElementById('poTradeManager'))return;
@@ -58,7 +97,7 @@
       #poTradeManager .pt-settings,#poTradeManager .pt-fields{display:grid;grid-template-columns:1fr 1fr;gap:8px}
       #poTradeManager label{display:block;font-size:11px;color:#9aabba;margin:8px 0}
       #poTradeManager input,#poTradeManager select{width:100%;min-width:0;background:#0b1520;border:1px solid #2b3b4c;color:#edf4fa;border-radius:9px;padding:10px}
-      #poTradeManager .pt-form{border-top:1px solid #2b3b4c;margin-top:14px;padding-top:12px}
+      #poTradeManager .pt-auto{border:1px solid #31506a;border-radius:12px;padding:11px;margin:12px 0;background:#101e2b}#poTradeManager .pt-auto-status{font-size:12px;color:#a9bbcc;line-height:1.6;margin:8px 0}#poTradeManager .pt-form{border-top:1px solid #2b3b4c;margin-top:14px;padding-top:12px}
       #poTradeManager .pt-check{display:flex;align-items:center;gap:8px}
       #poTradeManager .pt-check input{width:auto}
       #poTradeManager button{background:#173b4d;color:#edf4fa;border:1px solid #31506a;border-radius:9px;padding:9px;font-weight:700}
@@ -79,6 +118,7 @@
     `;
     document.head.appendChild(style);
     const card=document.createElement('section');card.id='poTradeManager';document.getElementById('manualTradeCard').insertAdjacentElement('afterend',card);render();
+    if(autoTimer)clearInterval(autoTimer);autoTimer=setInterval(runAutoEngine,1000);
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
 })();
