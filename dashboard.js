@@ -4,7 +4,7 @@
   const panel=document.createElement('section');
   panel.id='gptPanel';
   panel.innerHTML=`
-    <div class="gp-head"><div class="gp-brand">GPT <span>TRADE</span> · PO</div><span class="gp-pill" id="gpConnection">بانتظار المصدر</span></div>
+    <div class="gp-head"><div class="gp-brand">PO <span>AUTO SIGNALS</span> · PRO</div><span class="gp-pill" id="gpConnection">بانتظار المصدر</span></div>
     <div class="gp-market" id="gpMarket">السوق المختار</div>
     <div class="gp-signal wait" id="gpSignal"><strong>WAIT</strong><div class="gp-sub" id="gpReason">لا توجد قراءة حديثة</div></div>
     <div class="gp-head"><small>توافق المؤشرات</small><b id="gpAgreement">— / 3</b></div>
@@ -14,7 +14,7 @@
       <div class="gp-metric"><span>RSI 7</span><b id="gpRsi">—</b></div>
       <div class="gp-metric"><span>MOMENTUM</span><b id="gpMom">—</b></div>
     </div>
-    <div class="gp-foot"><small id="gpDuration">مدة التحليل: 60 ثانية</small><button type="button" id="gpRefresh">تحديث الإشارة</button></div>
+    <div class="gp-foot"><small id="gpDuration">الفترة: 60 ثانية</small><button type="button" id="gpRefresh">تحديث الإشارة</button></div>
     <div class="gp-warning">قراءة تحليلية وليست نسبة نجاح أو توصية. لا تُعرض CALL/PUT عند غياب البيانات أو قدمها. مصدر الأسعار الحالي ليس مؤكداً أنه مطابق لـ Pocket Option OTC.</div>`;
   nav.insertAdjacentElement('afterend',panel);
   const el=id=>document.getElementById(id);
@@ -22,7 +22,7 @@
   function update(){
     const asset=el('asset')?.selectedOptions?.[0]?.textContent||'—';
     el('gpMarket').textContent='السوق: '+asset;
-    el('gpDuration').textContent='مدة التحليل: '+(el('duration')?.selectedOptions?.[0]?.textContent||'—');
+    el('gpDuration').textContent='مدة التحليل: '+(el('timeframe')?.selectedOptions?.[0]?.textContent||'—');
     el('gpEma').textContent=text('ema')||'—';
     el('gpRsi').textContent=text('rsi')||'—';
     el('gpMom').textContent=text('mom')||'—';
@@ -51,7 +51,7 @@
     document.querySelector('[data-tab="home"]')?.click();
     const connect=el('connect');
     if(connect) connect.click();
-    else {const scan=el('scanStart');if(scan)scan.click();}
+    const scan=el('scanStart');if(scan&&!scan.disabled)scan.click();
   });
   el('asset')?.addEventListener('change',update);
   el('duration')?.addEventListener('change',update);
