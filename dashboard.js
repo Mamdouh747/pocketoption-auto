@@ -4,7 +4,7 @@
   const panel=document.createElement('section');
   panel.id='gptPanel';
   panel.innerHTML=`
-    <div class="gp-head"><div class="gp-brand">PO <span>AUTO SIGNALS</span> · PRO</div><span class="gp-pill" id="gpConnection">بانتظار المصدر</span></div>
+    <div class="gp-head"><div class="gp-brand">PO <span>AUTO SIGNALS</span> · PRO</div><span class="gp-pill" id="gpConnection">مصدر الأسعار</span></div>
     <div class="gp-market" id="gpMarket">السوق المختار</div>
     <div class="gp-signal wait" id="gpSignal"><strong>WAIT</strong><div class="gp-sub" id="gpReason">لا توجد قراءة حديثة</div></div>
     <div class="gp-head"><small>توافق المؤشرات</small><b id="gpAgreement">— / 3</b></div>
@@ -34,7 +34,7 @@
     el('gpSignal').querySelector('strong').textContent=strong;
     el('gpReason').textContent=reason;
     const status=text('status');
-    const connected=status.includes('متصل')&&!status.includes('غير متصل');
+    const connected=(status.includes('متصل')&&!status.includes('غير متصل'))||status.includes('بث مباشر · SignalR');
     el('gpConnection').textContent=connected?'متصل':'غير متصل';
     const ema=text('ema').split('/').map(v=>Number(v.trim()));
     const rsi=Number(text('rsi'));
