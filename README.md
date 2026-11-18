@@ -20,3 +20,5 @@ Signals are heuristic indicators, not guaranteed trade instructions. Validate ea
 - The DAX40 selector also resolves to the provider's documented market-page ticker `DE30` when that is the active symbol.
 
 - Indicator calculations now use the full available closed-candle history for EMA 5/13 and Wilder's smoothed RSI 7; the app waits for at least 30 candles before issuing a directional signal.
+
+- Automated validation lives in `tests/validate-app.js` and runs through `.github/workflows/validate.yml` on feature-branch pushes and pull requests targeting `main`.
