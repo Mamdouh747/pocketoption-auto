@@ -3,7 +3,7 @@ const assert = require('node:assert/strict');
 
 const html = fs.readFileSync('index.html', 'utf8');
 const start = html.indexOf('<script>');
-const end = html.lastIndexOf('</script>');
+const end = html.indexOf('</script>', start);
 assert.ok(start >= 0 && end > start, 'inline application script exists');
 const app = html.slice(start + 8, end);
 assert.doesNotThrow(() => new Function(app), 'application script parses');
@@ -15,8 +15,10 @@ for (const id of new Set(refs)) assert.ok(ids.includes(id), 'missing DOM id: ' +
 
 const scanner = fs.readFileSync('scanner.js', 'utf8');
 const dashboard = fs.readFileSync('dashboard.js', 'utf8');
+const tradeManager = fs.readFileSync('trade-manager.js', 'utf8');
 assert.doesNotThrow(() => new Function(scanner), 'scanner script parses');
 assert.doesNotThrow(() => new Function(dashboard), 'dashboard script parses');
+assert.doesNotThrow(() => new Function(tradeManager), 'Quick Trading manager script parses');
 assert.match(html, /microsoft-signalr\/8\.0\.0\/signalr\.min\.js/);
 assert.match(app, /HubConnectionBuilder/);
 assert.match(app, /startPolling\(\)/);
@@ -24,6 +26,7 @@ assert.match(html, /id="scanStart"/);
 assert.doesNotMatch(html, /id="gptPanel"/); // dashboard creates this panel at runtime
 assert.match(html, /dashboard\.css/);
 assert.match(html, /dashboard\.js/);
+assert.match(html, /trade-manager\.js/);
 assert.match(html, /id="manualCall"/);
 assert.match(html, /id="manualPut"/);
 assert.match(app, /التنفيذ اليدوي فقط/);
@@ -37,5 +40,8 @@ assert.equal(indicators.rsi(Array.from({length:40},(_,i)=>100+i),7),100);
 assert.equal(indicators.rsi(Array.from({length:40},(_,i)=>140-i),7),0);
 assert.match(scanner, /نحتاج 30 شمعة مكتملة/);
 assert.match(scanner, /Math\.floor\(t\/60000\)\*60000/);
-assert.match(fs.readFileSync('sw.js','utf8'), /po-auto-signals-v5/);
+assert.match(fs.readFileSync('sw.js','utf8'), /po-auto-signals-v6/);
+assert.match(fs.readFileSync('sw.js','utf8'), /trade-manager\.js/);
+assert.match(tradeManager, /تسجيل الصفقة المفتوحة/);
+assert.match(tradeManager, /poQuickTradeJournalV1/);
 console.log('Unified PRO dashboard validation passed.');
