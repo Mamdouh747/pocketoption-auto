@@ -23,3 +23,10 @@
 - Trade records are stored locally in the browser and can be exported as CSV; no broker credentials or session tokens are requested.
 - This is not a live account connection: balance and trade status are user-entered, and no orders are sent to Pocket Option.
 - A manual trade must be confirmed by the user before it is added to the journal. Risk limits are app-side warnings/guards only and cannot stop trades inside the broker terminal.
+
+
+## Auto Engine demo simulator
+- Adds an opt-in local paper-trading engine driven by fresh multi-asset scanner snapshots.
+- Opens simulated CALL/PUT positions, uses a configurable virtual stake, expiry duration, and daily loss stop, then records simulated outcomes from the next fresh quote after expiry.
+- Enforces a per-asset cooldown and rejects stale scanner snapshots.
+- This is a directional paper-trading approximation, not Pocket Option settlement logic; it does not connect to a broker or place real orders.
