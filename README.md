@@ -11,7 +11,7 @@
 - Fixed active-symbol parsing to match the documented `/api/active` response (`name`/`symbol`), so valid instruments are not rejected for missing undocumented flags.
 - Added optional browser audio alerts for CALL/PUT, with an in-app sound test and a user-controlled setting.
 - Signal history is saved locally on the device (up to 500 entries) and remains exportable as CSV.
-- Rejects stale quotes and out-of-order timestamps before they can affect the analysis.
+- Rejects stale quotes and out-of-order timestamps before they can affect the analysis; live quotes update the current one-minute sample instead of mixing five-second ticks into the one-minute indicator series.
 - PWA cache version is bumped when the app is updated so installed clients can receive the new files.
 
 Signals are heuristic indicators, not guaranteed trade instructions. Validate each symbol against the provider's live catalogue and test in a demo environment before relying on it.
