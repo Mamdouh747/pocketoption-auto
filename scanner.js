@@ -15,8 +15,8 @@
     await Promise.all(workers);
   };
   const calculate = prices => {
-    if (prices.length < 14) return {signal:'WAIT',reason:'نحتاج 14 قراءة',rsi:null};
-    const e5 = ema(prices.slice(-30),5), e13 = ema(prices.slice(-60),13);
+    if (prices.length < 30) return {signal:'WAIT',reason:'نحتاج 30 شمعة مكتملة',rsi:null};
+    const e5 = ema(prices,5), e13 = ema(prices,13);
     const rv = rsi(prices,7), mom = prices[prices.length-1] - prices[prices.length-4];
     if (![e5,e13,rv,mom].every(Number.isFinite)) return {signal:'WAIT',reason:'بيانات غير مكتملة',rsi:rv};
     if (e5 > e13 && rv >= 50 && rv <= 70 && mom > 0) return {signal:'CALL',reason:'اتجاه صاعد وزخم إيجابي',rsi:rv};
@@ -57,10 +57,10 @@
       if (returned && returned !== s.symbol) throw Error('رمز السعر غير مطابق');
       const p = quotePrice(d);
       if (!p) throw Error('لا يوجد سعر صالح');
-      const t = Date.parse(d.timestamp)||Date.now();
-      if (!s.time || t>s.time) s.prices.push(p);
-      else if (t===s.time && s.prices.length) s.prices[s.prices.length-1]=p;
-      else s.prices.push(p);
+      const t = Date.parse(d.timestamp)||Date.now(), bucket=Math.floor(t/60000)*60000;
+      if (!Number.isFinite(s.lastBucket) || bucket>s.lastBucket) { s.prices.push(p); s.lastBucket=bucket; }
+      else if (bucket===s.lastBucket && s.prices.length) s.prices[s.prices.length-1]=p;
+      else throw Error('وصلت قراءة أقدم من شمعة الماسح الحالية');
       if (s.prices.length>180) s.prices.shift();
       s.price=p; s.time=t; s.source=d.source||'biquote';
       const result=calculate(s.prices);
