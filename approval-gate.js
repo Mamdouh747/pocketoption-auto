@@ -121,14 +121,19 @@
     $('poApprovalGate').scrollIntoView({ behavior: 'smooth', block: 'center' });
   }, true);
 
-  window.addEventListener('po:scan-update', event => {
-    const d = event.detail || {};
-    if (d.asset === $('asset')?.value) {
-      latest = { asset: d.asset, signal: d.signal || 'WAIT', price: Number(d.price), time: Number(d.time) };
-      if (!Number.isFinite(latest.price)) latest.price = null;
-      render();
-    }
-  });
+  // Called by the existing analyzer's own one-second UI refresh.
+  // This keeps the approval panel tied to the exact selected provider symbol,
+  // current signal, displayed price, and last accepted live quote timestamp.
+  window.poApprovalUpdate = function (d) {
+    d = d || {};
+    latest = {
+      asset: String(d.asset || ''),
+      signal: d.signal === 'CALL' || d.signal === 'PUT' ? d.signal : 'WAIT',
+      price: Number.isFinite(Number(d.price)) && Number(d.price) > 0 ? Number(d.price) : null,
+      time: Number(d.time) || 0
+    };
+    render();
+  };
   document.addEventListener('DOMContentLoaded', ensurePanel);
   ensurePanel();
   setInterval(() => {
