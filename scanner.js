@@ -52,12 +52,15 @@
     }
     try {
       const d = await getJSON(apiBase+'/'+encodeURIComponent(s.symbol)+'?allowStale=false');
-      if (d.stale===true || d.marketState==='closed' || Number(d.quoteAgeSeconds)>300) throw Error('سعر قديم أو السوق مغلق');
+      const quoteAge=Number(d.quoteAgeSeconds),t=Date.parse(d.timestamp),now=Date.now();
+      if (d.stale===true || d.marketState==='closed') throw Error('السوق مغلق أو السعر معلّم كقديم');
+      if (Number.isFinite(quoteAge) && quoteAge>60) throw Error('السعر أقدم من 60 ثانية');
+      if (!Number.isFinite(t) || now-t>60000 || t-now>15000) throw Error('توقيت السعر مفقود أو قديم أو مستقبلي');
       const returned = String(d.symbol||'').trim().toUpperCase();
       if (returned && returned !== s.symbol) throw Error('رمز السعر غير مطابق');
       const p = quotePrice(d);
       if (!p) throw Error('لا يوجد سعر صالح');
-      const t = Date.parse(d.timestamp)||Date.now(), bucket=Math.floor(t/60000)*60000;
+      const bucket=Math.floor(t/60000)*60000;
       if (!Number.isFinite(s.lastBucket) || bucket>s.lastBucket) { s.prices.push(p); s.lastBucket=bucket; }
       else if (bucket===s.lastBucket && s.prices.length) s.prices[s.prices.length-1]=p;
       else throw Error('وصلت قراءة أقدم من شمعة الماسح الحالية');
@@ -72,7 +75,7 @@
       }
     } catch (e) { s.signal='WAIT'; s.reason=e.message; }
     state.set(asset,s);
-    window.dispatchEvent(new CustomEvent('po:scan-update', {detail:{asset,signal:s.signal||'WAIT',price:Number.isFinite(s.price)?s.price:null,time:s.time||0,reason:s.reason||''}}));
+    window.dispatchEvent(new CustomEvent('po:scan-update', {detail:{asset,signal:s.signal||'WAIT',price:Number.isFinite(s.price)?s.price:null,time:s.time||0,source:s.source||'',reason:s.reason||''}}));
   };
   const cycle = async () => {
     if (!running || cycleBusy) return;
