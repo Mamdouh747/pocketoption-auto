@@ -40,7 +40,7 @@ assert.equal(indicators.rsi(Array.from({length:40},(_,i)=>100+i),7),100);
 assert.equal(indicators.rsi(Array.from({length:40},(_,i)=>140-i),7),0);
 assert.match(scanner, /نحتاج 30 شمعة مكتملة/);
 assert.match(scanner, /Math\.floor\(t\/60000\)\*60000/);
-assert.match(fs.readFileSync('sw.js','utf8'), /po-auto-signals-v\\d+/);
+assert.match(fs.readFileSync('sw.js','utf8'), /po-auto-signals-v\d+/);
 assert.match(fs.readFileSync('sw.js','utf8'), /trade-manager\.js/);
 assert.match(tradeManager, /تسجيل الصفقة المفتوحة/);
 assert.match(tradeManager, /poQuickTradeJournalV1/);
