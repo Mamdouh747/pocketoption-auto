@@ -7,6 +7,8 @@
   let state=read();
   const metrics={received:0,fresh:0,entered:0,skipped:'بانتظار أول قراءة',last:'—'};
   const confirmations={};
+  // Count confirmations only when the provider timestamp advances.
+  const lastQuoteTimeByAsset={};
   const money=n=>Math.abs(Number(n||0)).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
   const signedMoney=n=>'<bdi dir="ltr">'+(Number(n)>0?'+':Number(n)<0?'−':'')+money(n)+'</bdi>';
   const today=()=>new Date().toLocaleDateString('en-CA');
@@ -27,13 +29,13 @@
     rollDay();
     const pnl=dayPnl(),halt=(lossLimit()>0&&pnl<=-lossLimit())||lossStreak()>=3;
     const closedToday=state.trades.filter(t=>t.day===today()&&t.status==='closed');
-    const wins=closedToday.filter(t=>Number(t.pnl)>0).length,losses=closedToday.filter(t=>Number(t.pnl)<0).length;
-    const winRate=closedToday.length?Math.round(wins/closedToday.length*100):0;
-    const rows=state.trades.slice(0,12).map(t=>'<div class="ae-row"><span><b>'+esc(t.asset)+' · '+t.side+'</b><small>'+new Date(t.opened).toLocaleTimeString('ar-SA')+' · '+money(t.stake)+'$ · '+t.duration+'ث</small></span><b class="'+(t.status==='open'?'ae-open':t.pnl>=0?'ae-win':'ae-loss')+'">'+(t.status==='open'?'مفتوحة':signedMoney(t.pnl))+'</b></div>').join('');
+    const wins=closedToday.filter(t=>Number(t.pnl)>0).length,losses=closedToday.filter(t=>Number(t.pnl)<0).length,draws=closedToday.filter(t=>t.result==='draw').length;
+    const decisive=wins+losses,winRate=decisive?Math.round(wins/decisive*100):0;
+    const rows=state.trades.slice(0,12).map(t=>'<div class="ae-row"><span><b>'+esc(t.asset)+' · '+t.side+'</b><small>'+new Date(t.opened).toLocaleTimeString('ar-SA')+' · '+money(t.stake)+'$ · '+t.duration+'ث</small></span><b class="'+(t.status==='open'?'ae-open':t.result==='draw'?'ae-open':t.pnl>0?'ae-win':'ae-loss')+'">'+(t.status==='open'?'مفتوحة':t.result==='draw'?'تعادل · 0.00$':signedMoney(t.pnl))+'</b></div>').join('');
     root.innerHTML='<div class="ae-head"><b>محرك التداول الآلي · Demo PRO</b><span class="ae-tag">محاكاة فقط</span></div>'+
       '<p class="ae-note">محرك تجريبي محلي. لا يتصل بحساب Pocket Option ولا يرسل أوامر حقيقية. يلزم تأكيد الإشارة مرتين قبل فتح صفقة افتراضية.</p>'+
       '<div class="ae-stats"><div><small>الرصيد الافتراضي</small><b>'+money(state.balance)+'$</b></div><div><small>نتيجة اليوم</small><b class="'+(pnl>=0?'ae-win':'ae-loss')+'">'+signedMoney(pnl)+'</b></div><div><small>مفتوحة</small><b>'+openTrades().length+' / '+state.maxOpenTrades+'</b></div></div>'+
-      '<div class="ae-limits">إحصائيات اليوم: <b>'+wins+'</b> ربح · <b>'+losses+'</b> خسارة · الفوز <b>'+winRate+'%</b> · سلسلة الخسائر الحالية <b>'+lossStreak()+'/3</b></div>'+
+      '<div class="ae-limits">إحصائيات اليوم: <b>'+wins+'</b> ربح · <b>'+losses+'</b> خسارة · <b>'+draws+'</b> تعادل · نسبة الفوز من الصفقات الحاسمة <b>'+winRate+'%</b> · سلسلة الخسائر <b>'+lossStreak()+'/3</b></div>'+
       '<div class="ae-settings"><label>مبلغ كل صفقة (% الرصيد)<input id="aeRisk" type="number" min="0.1" max="5" step="0.1" value="'+esc(state.riskPct)+'"></label>'+
       '<label>حد خسارة اليوم (%)<input id="aeLoss" type="number" min="0.5" max="20" step="0.5" value="'+esc(state.dailyLossPct)+'"></label>'+
       '<label>مدة المحاكاة (ثانية)<select id="aeDuration">'+[30,60,90,120,180,300].map(v=>'<option value="'+v+'" '+(Number(state.duration)===v?'selected':'')+'>'+v+'</option>').join('')+'</select></label>'+
@@ -44,7 +46,7 @@
       '<div class="ae-limits">حجم الصفقة الافتراضي: <b>'+money(stake())+'$</b> · حد خسارة اليوم: <b>'+money(lossLimit())+'$</b> · تأكيدان متتاليان · مهلة 180 ثانية لكل أصل</div>'+
       '<div class="ae-limits">تشخيص الربط: <b>'+metrics.received+'</b> مستلمة · <b>'+metrics.fresh+'</b> حديثة · <b>'+metrics.entered+'</b> دخول · '+esc(metrics.skipped)+' · '+esc(metrics.last)+'</div>'+
       '<div class="ae-head"><b>سجل المحاكاة</b></div>'+(rows||'<p class="ae-note">لا توجد صفقات افتراضية بعد. شغّل الماسح ثم المحرك.</p>')+
-      '<p class="ae-note">نتائج المحاكاة لا تمثل عائد Pocket Option؛ لا تحتسب التعادل أو قواعد OTC أو فروق الأسعار والعمولات.</p>';
+      '<p class="ae-note">نتائج المحاكاة تقديرية فقط. التعادل يسجل بصفر، والإغلاق يتم عند أول سعر حديث بعد انتهاء المدة؛ لا تمثل هذه النتائج تسوية Pocket Option أو OTC أو فروق الأسعار والعمولات.</p>';
     root.querySelector('#aeRisk').onchange=e=>{state.riskPct=Math.min(5,Math.max(.1,Number(e.target.value)||1));save()};
     root.querySelector('#aeLoss').onchange=e=>{state.dailyLossPct=Math.min(20,Math.max(.5,Number(e.target.value)||3));save()};
     root.querySelector('#aeDuration').onchange=e=>{state.duration=Number(e.target.value);save()};
@@ -57,14 +59,17 @@
     metrics.received++;
     const now=Date.now();
     metrics.last=(d&&d.asset?d.asset:'قراءة غير معروفة')+' · '+(d&&d.signal||'—');
-    if(!d||!d.asset||!Number.isFinite(d.price)||!Number.isFinite(d.time)||!d.time){metrics.skipped='بيانات السعر أو الوقت غير صالحة';render();return;}
-    if(now-d.time>60000||d.time-now>30000){metrics.skipped='تم تجاهل سعر قديم';render();return;}
+    if(!d||!d.asset||!Number.isFinite(d.price)||d.price<=0||!Number.isFinite(d.time)||!d.time){metrics.skipped='بيانات السعر أو الوقت غير صالحة';render();return;}
+    if(now-d.time>60000||d.time-now>15000){metrics.skipped='تم تجاهل سعر قديم أو توقيته مستقبلي';render();return;}
+    if(d.time<=Number(lastQuoteTimeByAsset[d.asset]||0)){metrics.skipped='تكرار توقيت السعر؛ بانتظار قراءة سوق جديدة';render();return;}
+    lastQuoteTimeByAsset[d.asset]=d.time;
     metrics.fresh++;rollDay();
     for(const t of openTrades()){
       if(t.asset!==d.asset||now-t.openedMs<t.duration*1000)continue;
       t.status='closed';t.closed=new Date().toISOString();
       const win=t.side==='CALL'?d.price>t.entry:d.price<t.entry;
-      t.pnl=win?t.stake*t.payout/100:-t.stake;t.exit=d.price;t.result=win?'win':'loss';state.balance+=t.pnl;
+      const draw=d.price===t.entry;
+      t.pnl=draw?0:win?t.stake*t.payout/100:-t.stake;t.exit=d.price;t.result=draw?'draw':win?'win':'loss';state.balance+=t.pnl;
     }
     const sig=d.signal==='CALL'||d.signal==='PUT'?d.signal:'WAIT';
     if(sig==='WAIT'){delete confirmations[d.asset];if(state.lastSignalByAsset)delete state.lastSignalByAsset[d.asset];}
