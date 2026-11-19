@@ -29,7 +29,7 @@
     const closedToday=state.trades.filter(t=>t.day===today()&&t.status==='closed');
     const wins=closedToday.filter(t=>Number(t.pnl)>0).length,losses=closedToday.filter(t=>Number(t.pnl)<0).length;
     const winRate=closedToday.length?Math.round(wins/closedToday.length*100):0;
-    const rows=state.trades.slice(0,12).map(t=>'<div class="ae-row"><span><b>'+esc(t.asset)+' · '+t.side+'</b><small>'+new Date(t.opened).toLocaleTimeString('ar-SA')+' · '+money(t.stake)+'$ · '+t.duration+'ث</small></span><b class="'+(t.status==='open'?'ae-open':t.pnl>=0?'ae-win':'ae-loss')+'">'+(t.status==='open'?'مفتوحة':signedMoney(t.pnl)+')+'</b></div>').join('');
+    const rows=state.trades.slice(0,12).map(t=>'<div class="ae-row"><span><b>'+esc(t.asset)+' · '+t.side+'</b><small>'+new Date(t.opened).toLocaleTimeString('ar-SA')+' · '+money(t.stake)+'$ · '+t.duration+'ث</small></span><b class="'+(t.status==='open'?'ae-open':t.pnl>=0?'ae-win':'ae-loss')+'">'+(t.status==='open'?'مفتوحة':signedMoney(t.pnl))+'</b></div>').join('');
     root.innerHTML='<div class="ae-head"><b>محرك التداول الآلي · Demo PRO</b><span class="ae-tag">محاكاة فقط</span></div>'+
       '<p class="ae-note">محرك تجريبي محلي. لا يتصل بحساب Pocket Option ولا يرسل أوامر حقيقية. يلزم تأكيد الإشارة مرتين قبل فتح صفقة افتراضية.</p>'+
       '<div class="ae-stats"><div><small>الرصيد الافتراضي</small><b>'+money(state.balance)+'$</b></div><div><small>نتيجة اليوم</small><b class="'+(pnl>=0?'ae-win':'ae-loss')+'">'+signedMoney(pnl)+'</b></div><div><small>مفتوحة</small><b>'+openTrades().length+' / '+state.maxOpenTrades+'</b></div></div>'+
