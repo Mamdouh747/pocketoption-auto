@@ -3,7 +3,8 @@
   const KEY='poQuickTradeJournalV1';
   const read=()=>{try{return JSON.parse(localStorage.getItem(KEY))||{balance:0,riskPct:1,dailyLossPct:3,mode:'demo',trades:[]}}catch{return{balance:0,riskPct:1,dailyLossPct:3,mode:'demo',trades:[]}}};
   let state=read();
-  const money=n=>Number(n||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const money=n=>Math.abs(Number(n||0)).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const signedMoney=n=>(Number(n)>0?'+':Number(n)<0?'−':'')+money(Math.abs(Number(n||0)));
   const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const today=()=>new Date().toLocaleDateString('en-CA');
   const pnl=()=>state.trades.filter(t=>t.day===today()&&t.result).reduce((a,t)=>a+Number(t.pnl||0),0);
@@ -14,11 +15,11 @@
   function render(){
     let root=document.getElementById('poTradeManager');if(!root)return;
     const dayPnl=pnl(),limit=maxLoss(),lossReached=dayPnl<=-limit&&limit>0;
-    const rows=state.trades.slice(0,25).map(t=>`<div class="pt-row"><div><b>${esc(t.asset)} · ${t.side==='CALL'?'CALL':'PUT'}</b><small>${new Date(t.time).toLocaleString('ar-SA')} · ${money(t.amount)}$ · ${esc(t.duration)} ث</small><small>دخول: ${esc(t.entry||'—')} · عائد: ${esc(t.payout)}%</small></div><div class="pt-actions">${t.result==='open'?'<span class="pt-open">مفتوحة يدوياً</span>':`<b class="${t.pnl>0?'pt-win':t.pnl<0?'pt-loss':''}">${t.pnl>0?'+':''}${money(t.pnl)}$</b><small>${t.result==='win'?'ربح':t.result==='loss'?'خسارة':'استرداد'}</small>`}</div>${t.result==='open'?`<div class="pt-result"><button data-result="win" data-id="${t.id}">ربح</button><button data-result="loss" data-id="${t.id}">خسارة</button><button data-result="refund" data-id="${t.id}">استرداد</button></div>`:''}</div>`).join('');
+    const rows=state.trades.slice(0,25).map(t=>`<div class="pt-row"><div><b>${esc(t.asset)} · ${t.side==='CALL'?'CALL':'PUT'}</b><small>${new Date(t.time).toLocaleString('ar-SA')} · ${money(t.amount)}$ · ${esc(t.duration)} ث</small><small>دخول: ${esc(t.entry||'—')} · عائد: ${esc(t.payout)}%</small></div><div class="pt-actions">${t.result==='open'?'<span class="pt-open">مفتوحة يدوياً</span>':`<b class="${t.pnl>0?'pt-win':t.pnl<0?'pt-loss':''}">${signedMoney(t.pnl)}$</b><small>${t.result==='win'?'ربح':t.result==='loss'?'خسارة':'استرداد'}</small>`}</div>${t.result==='open'?`<div class="pt-result"><button data-result="win" data-id="${t.id}">ربح</button><button data-result="loss" data-id="${t.id}">خسارة</button><button data-result="refund" data-id="${t.id}">استرداد</button></div>`:''}</div>`).join('');
     root.innerHTML=`
       <div class="pt-head"><b>إدارة الصفقات · Quick Trading</b><span class="pt-pill">${state.mode==='demo'?'تجريبي':'حقيقي'} · تسجيل يدوي</span></div>
       <p class="pt-note">هذه لوحة متابعة محلية وليست اتصالاً بحساب الوسيط. لا تقرأ الرصيد أو الصفقات من Pocket Option. سجّل الصفقة بعد تنفيذها بنفسك داخل المنصة، ثم حدّث نتيجتها هنا.</p>
-      <div class="pt-stats"><div><small>الرصيد المرجعي</small><b>${money(state.balance)}$</b></div><div><small>الرصيد التقديري</small><b>${money(Number(state.balance)+state.trades.reduce((a,t)=>a+Number(t.pnl||0),0))}$</b></div><div><small>نتيجة اليوم</small><b class="${dayPnl>=0?'pt-win':'pt-loss'}">${dayPnl>0?'+':''}${money(dayPnl)}$</b></div></div>
+      <div class="pt-stats"><div><small>الرصيد المرجعي</small><b>${money(state.balance)}$</b></div><div><small>الرصيد التقديري</small><b>${money(Number(state.balance)+state.trades.reduce((a,t)=>a+Number(t.pnl||0),0))}$</b></div><div><small>نتيجة اليوم</small><b class="${dayPnl>=0?'pt-win':'pt-loss'}">${signedMoney(dayPnl)}$</b></div></div>
       <div class="pt-settings"><label>نوع الحساب<select id="ptMode"><option value="demo" ${state.mode==='demo'?'selected':''}>Demo تجريبي</option><option value="live" ${state.mode==='live'?'selected':''}>Real حقيقي</option></select></label><label>الرصيد المرجعي ($)<input id="ptBalance" type="number" min="0" step="0.01" value="${esc(state.balance)}"></label><label>حد الصفقة (% من الرصيد)<input id="ptRisk" type="number" min="0.1" max="10" step="0.1" value="${esc(state.riskPct)}"></label><label>حد خسارة اليوم (%)<input id="ptDaily" type="number" min="0.5" max="30" step="0.5" value="${esc(state.dailyLossPct)}"></label></div>
       <div class="pt-limits"><span>حد المبلغ المقترح للصفقة: <b>${money(maxRisk())}$</b></span><span>حد خسارة اليوم: <b>${money(limit)}$</b></span><span>الصفقات المفتوحة المسجلة: <b>${open().length}</b></span></div>
       ${lossReached?'<div class="pt-stop">تم بلوغ حد خسارة اليوم المسجل. أوقف التداول وراجع النتائج قبل أي صفقة جديدة.</div>':''}
@@ -68,7 +69,7 @@
       #poTradeManager .pt-stop{background:#42252a;border:1px solid #9e3d4d;border-radius:10px;padding:10px;color:#ffb5bb;font-size:12px}
       #poTradeManager .pt-row{display:grid;grid-template-columns:1fr auto;gap:8px;background:#0b1520;border:1px solid #2b3b4c;border-radius:10px;padding:10px;margin:7px 0}
       #poTradeManager .pt-row small{display:block;margin-top:3px}
-      #poTradeManager .pt-actions{text-align:left}
+      #poTradeManager .pt-actions{text-align:left;direction:ltr;unicode-bidi:isolate}.pt-stats b{direction:ltr;unicode-bidi:isolate;text-align:right}.pt-row small{direction:rtl}
       #poTradeManager .pt-result{grid-column:1/-1;display:flex;gap:6px}
       #poTradeManager .pt-result button{flex:1}
       #poTradeManager .pt-win{color:#16c79a}#poTradeManager .pt-loss{color:#ff6874}#poTradeManager .pt-open{color:#f4c66a;font-size:11px}
