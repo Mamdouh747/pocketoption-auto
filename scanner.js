@@ -87,8 +87,9 @@
     try {
       if (!window.__poActiveSymbols) window.__poActiveSymbols=await getJSON(apiBase+'/active');
       await pool(assets,4,scanOne);
-      const ready=[...state.values()].filter(s=>s.time).length;
+      const now=Date.now(),ready=[...state.values()].filter(s=>s.time&&now-s.time<=60000&&now-s.time>=-15000).length;
       status.textContent='يفحص '+ready+' من '+assets.length+' سوق · آخر فحص '+new Date().toLocaleTimeString('ar-SA');
+      window.dispatchEvent(new CustomEvent('po:scanner-status',{detail:{running:true,fresh:ready,total:assets.length,time:now}}));
       render();
     } catch(e) { status.textContent='تعذر الفحص: '+e.message; }
     finally { cycleBusy=false; }
@@ -98,6 +99,7 @@
     try {
       if (typeof save==='function') save();
       running=true; $('scanStart').disabled=true; $('scanStop').disabled=false;
+      window.dispatchEvent(new CustomEvent('po:scanner-status',{detail:{running:true,fresh:0,total:assets.length,time:Date.now()}}));
       status.textContent='جاري التحقق من الأسواق...';
       window.__poActiveSymbols=await getJSON(apiBase+'/active');
       await cycle();
@@ -109,6 +111,7 @@
   };
   $('scanStop').onclick = () => {
     running=false; if(loop) clearInterval(loop); loop=null;
+    window.dispatchEvent(new CustomEvent('po:scanner-status',{detail:{running:false,fresh:0,total:assets.length,time:Date.now()}}));
     $('scanStart').disabled=false; $('scanStop').disabled=true;
     status.textContent='تم إيقاف الماسح.';
   };
