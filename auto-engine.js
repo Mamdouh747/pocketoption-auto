@@ -66,7 +66,7 @@
       t.pnl=win?t.stake*t.payout/100:-t.stake;t.exit=d.price;t.result=win?'win':'loss';state.balance+=t.pnl;
     }
     const sig=d.signal==='CALL'||d.signal==='PUT'?d.signal:'WAIT';
-    if(sig==='WAIT'){delete confirmations[d.asset];}
+    if(sig==='WAIT'){delete confirmations[d.asset];if(state.lastSignalByAsset)delete state.lastSignalByAsset[d.asset];}
     else {
       const c=confirmations[d.asset];
       confirmations[d.asset]=c&&c.signal===sig?{signal:sig,count:c.count+1}:{signal:sig,count:1};
