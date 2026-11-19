@@ -5,6 +5,7 @@
   const defaults={enabled:false,balance:1000,riskPct:1,dailyLossPct:3,duration:60,payout:85,trades:[]};
   const read=()=>{try{return {...defaults,...JSON.parse(localStorage.getItem(KEY)||'{}')}}catch{return {...defaults}}};
   let state=read();
+  const metrics={received:0,fresh:0,entered:0,skipped:'بانتظار أول قراءة',last:'—'};
   const money=n=>Number(n||0).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
   const today=()=>new Date().toLocaleDateString('en-CA');
   const dayPnl=()=>state.trades.filter(t=>t.day===today()&&t.status==='closed').reduce((s,t)=>s+Number(t.pnl||0),0);
@@ -27,6 +28,7 @@
       (halt?'<div class="ae-stop">توقف المحرك: تم بلوغ حد خسارة اليوم في المحاكاة.</div>':'')+
       '<div class="ae-actions"><button id="aeToggle" class="'+(state.enabled?'ae-stopbtn':'ae-start')+'">'+(state.enabled?'إيقاف المحرك':'تشغيل Auto Engine')+'</button><button id="aeReset">إعادة ضبط الرصيد الافتراضي</button></div>'+
       '<div class="ae-limits">حجم الصفقة الافتراضي: <b>'+money(stake())+'$</b> · حد خسارة اليوم: <b>'+money(lossLimit())+'$</b></div>'+
+      '<div class="ae-limits">تشخيص الربط: <b>'+metrics.received+'</b> مستلمة · <b>'+metrics.fresh+'</b> حديثة · <b>'+metrics.entered+'</b> دخول · '+esc(metrics.skipped)+' · '+esc(metrics.last)+'</div>'+
       '<div class="ae-head"><b>سجل المحاكاة</b></div>'+(rows||'<p class="ae-note">لا توجد صفقات افتراضية بعد. شغّل الماسح ثم المحرك.</p>')+
       '<p class="ae-note">نتائج المحاكاة لا تمثل عائد Pocket Option؛ لا تحتسب التعادل أو قواعد OTC أو فروق الأسعار والعمولات.</p>';
     root.querySelector('#aeRisk').onchange=e=>{state.riskPct=Math.min(5,Math.max(.1,Number(e.target.value)||1));save()};
@@ -37,25 +39,15 @@
     root.querySelector('#aeReset').onclick=()=>{if(confirm('إعادة الرصيد الافتراضي إلى 1000$ ومسح سجل المحاكاة؟')){state={...defaults,trades:[]};save()}};
   }
   function process(d){
-    if(!d||!d.asset||!Number.isFinite(d.price)||!d.time)return;
+    metrics.received++;
     const now=Date.now();
-    if(now-d.time>60000||d.time-now>30000)return;
-    for(const t of openTrades()){
-      if(t.asset!==d.asset||now-t.openedMs< t.duration*1000)continue;
-      t.status='closed';t.closed=new Date().toISOString();
-      const win=t.side==='CALL'?d.price>t.entry:d.price<t.entry;
-      t.pnl=win?t.stake*t.payout/100:-t.stake;
-      t.exit=d.price;t.result=win?'win':'loss';
-      state.balance+=t.pnl;
-    }
+    metrics.last=(d&&d.asset?d.asset:'قراءة غير معروفة')+' · '+(d&&d.signal||'—');
+    if(!d||!d.asset||!Number.isFinite(d.price)||!Number.isFinite(d.time)||!d.time){metrics.skipped='بيانات السعر أو الوقت غير صالحة';render();return;}
+    if(now-d.time>60000||d.time-now>30000){metrics.skipped='تم تجاهل سعر قديم';render();return;}
+    metrics.fresh++;
+    for(const t of openTrades()){if(t.asset!==d.asset||now-t.openedMs<t.duration*1000)continue;t.status='closed';t.closed=new Date().toISOString();const win=t.side==='CALL'?d.price>t.entry:d.price<t.entry;t.pnl=win?t.stake*t.payout/100:-t.stake;t.exit=d.price;t.result=win?'win':'loss';state.balance+=t.pnl;}
     const lastEntry=Number(state.lastEntryByAsset?.[d.asset]||0);
-    if(state.enabled&&now-d.time<60000&&d.signal!=='WAIT'&&now-lastEntry>=60000&&!openTrades().some(t=>t.asset===d.asset)){
-      const pnl=dayPnl(),limit=lossLimit();
-      if(!(limit>0&&pnl<=-limit)&&stake()>0&&state.balance>0){
-        state.trades.unshift({asset:d.asset,side:d.signal,entry:d.price,stake:Math.min(stake(),state.balance),payout:state.payout,duration:state.duration,opened:new Date().toISOString(),openedMs:now,day:today(),status:'open',pnl:0});
-        state.lastEntryByAsset={...(state.lastEntryByAsset||{}),[d.asset]:now};
-      }
-    }
+    if(!state.enabled)metrics.skipped='المحرك متوقف';else if(d.signal!=='CALL'&&d.signal!=='PUT')metrics.skipped='الإشارة WAIT';else if(now-lastEntry<60000)metrics.skipped='فترة انتظار منع التكرار';else if(openTrades().some(t=>t.asset===d.asset))metrics.skipped='توجد صفقة مفتوحة على الأصل';else {const pnl=dayPnl(),limit=lossLimit();if(limit>0&&pnl<=-limit)metrics.skipped='تم بلوغ حد خسارة اليوم';else if(!(stake()>0&&state.balance>0))metrics.skipped='الرصيد أو مبلغ الصفقة غير صالح';else {state.trades.unshift({asset:d.asset,side:d.signal,entry:d.price,stake:Math.min(stake(),state.balance),payout:state.payout,duration:state.duration,opened:new Date().toISOString(),openedMs:now,day:today(),status:'open',pnl:0});state.lastEntryByAsset={...(state.lastEntryByAsset||{}),[d.asset]:now};metrics.entered++;metrics.skipped='تم فتح صفقة افتراضية';}}
     state.trades=state.trades.slice(0,200);localStorage.setItem(KEY,JSON.stringify(state));render();
   }
   window.addEventListener('po:scan-update',e=>process(e.detail));
