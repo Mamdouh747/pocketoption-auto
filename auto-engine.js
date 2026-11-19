@@ -32,7 +32,7 @@
     const rows=state.trades.slice(0,12).map(t=>'<div class="ae-row"><span><b>'+esc(t.asset)+' · '+t.side+'</b><small>'+new Date(t.opened).toLocaleTimeString('ar-SA')+' · '+money(t.stake)+'$ · '+t.duration+'ث</small></span><b class="'+(t.status==='open'?'ae-open':t.pnl>=0?'ae-win':'ae-loss')+'">'+(t.status==='open'?'مفتوحة':signedMoney(t.pnl)+')+'</b></div>').join('');
     root.innerHTML='<div class="ae-head"><b>محرك التداول الآلي · Demo PRO</b><span class="ae-tag">محاكاة فقط</span></div>'+
       '<p class="ae-note">محرك تجريبي محلي. لا يتصل بحساب Pocket Option ولا يرسل أوامر حقيقية. يلزم تأكيد الإشارة مرتين قبل فتح صفقة افتراضية.</p>'+
-      '<div class="ae-stats"><div><small>الرصيد الافتراضي</small><b>'+money(state.balance)+'$</b></div><div><small>نتيجة اليوم</small><b class="'+(pnl>=0?'ae-win':'ae-loss')+'">'+(pnl>0?'+':'')+money(pnl)+'$</b></div><div><small>مفتوحة</small><b>'+openTrades().length+' / '+state.maxOpenTrades+'</b></div></div>'+
+      '<div class="ae-stats"><div><small>الرصيد الافتراضي</small><b>'+money(state.balance)+'$</b></div><div><small>نتيجة اليوم</small><b class="'+(pnl>=0?'ae-win':'ae-loss')+'">'+signedMoney(pnl)+'$</b></div><div><small>مفتوحة</small><b>'+openTrades().length+' / '+state.maxOpenTrades+'</b></div></div>'+
       '<div class="ae-limits">إحصائيات اليوم: <b>'+wins+'</b> ربح · <b>'+losses+'</b> خسارة · الفوز <b>'+winRate+'%</b> · سلسلة الخسائر الحالية <b>'+lossStreak()+'/3</b></div>'+
       '<div class="ae-settings"><label>مبلغ كل صفقة (% الرصيد)<input id="aeRisk" type="number" min="0.1" max="5" step="0.1" value="'+esc(state.riskPct)+'"></label>'+
       '<label>حد خسارة اليوم (%)<input id="aeLoss" type="number" min="0.5" max="20" step="0.5" value="'+esc(state.dailyLossPct)+'"></label>'+
