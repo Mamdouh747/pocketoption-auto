@@ -38,7 +38,11 @@
     let s = state.get(asset) || {prices:[],signal:'WAIT',lastSignal:'',lastAt:0};
     if (!s.symbol) {
       s.symbol = resolveSymbol(asset, window.__poActiveSymbols);
-      if (!s.symbol) { s.reason='لا توجد بيانات نشطة لدى المصدر'; state.set(asset,s); return; }
+      if (!s.symbol) {
+        s.signal='WAIT'; s.reason='لا توجد بيانات نشطة لدى المصدر'; state.set(asset,s);
+        window.dispatchEvent(new CustomEvent('po:scan-update',{detail:{asset,signal:'WAIT',price:null,time:0,source:'',reason:s.reason}}));
+        return;
+      }
     }
     if (!s.seeded) {
       try {
