@@ -17,7 +17,8 @@
     if(state.dayKey!==d){state.dayKey=d;state.dayStartBalance=Number(state.balance)||1000;state.lastEntryByAsset={};state.lastSignalByAsset={};}
   }
   rollDay();
-  const dayPnl=()=>state.trades.filter(t=>t.day===today()&&t.status==='closed').reduce((s,t)=>s+Number(t.pnl||0),0);
+  const closedDay=t=>t.closedDay||(t.closed?new Date(t.closed).toLocaleDateString('en-CA'):t.day);
+  const dayPnl=()=>state.trades.filter(t=>t.status==='closed'&&closedDay(t)===today()).reduce((s,t)=>s+Number(t.pnl||0),0);
   const openTrades=()=>state.trades.filter(t=>t.status==='open');
   const stake=()=>Math.max(0,Number(state.balance)*Number(state.riskPct)/100);
   const lossLimit=()=>Math.max(0,Number(state.dayStartBalance)*Number(state.dailyLossPct)/100);
@@ -28,7 +29,7 @@
     const root=document.getElementById('poAutoEngine');if(!root)return;
     rollDay();
     const pnl=dayPnl(),halt=(lossLimit()>0&&pnl<=-lossLimit())||lossStreak()>=3;
-    const closedToday=state.trades.filter(t=>t.day===today()&&t.status==='closed');
+    const closedToday=state.trades.filter(t=>t.status==='closed'&&closedDay(t)===today());
     const wins=closedToday.filter(t=>Number(t.pnl)>0).length,losses=closedToday.filter(t=>Number(t.pnl)<0).length,draws=closedToday.filter(t=>t.result==='draw').length;
     const decisive=wins+losses,winRate=decisive?Math.round(wins/decisive*100):0;
     const rows=state.trades.slice(0,12).map(t=>'<div class="ae-row"><span><b>'+esc(t.asset)+' · '+t.side+'</b><small>'+new Date(t.opened).toLocaleTimeString('ar-SA')+' · '+money(t.stake)+'$ · '+t.duration+'ث</small></span><b class="'+(t.status==='open'?'ae-open':t.result==='draw'?'ae-open':t.pnl>0?'ae-win':'ae-loss')+'">'+(t.status==='open'?'مفتوحة':t.result==='draw'?'تعادل · 0.00$':signedMoney(t.pnl))+'</b></div>').join('');
@@ -66,7 +67,7 @@
     metrics.fresh++;rollDay();
     for(const t of openTrades()){
       if(t.asset!==d.asset||now-t.openedMs<t.duration*1000)continue;
-      t.status='closed';t.closed=new Date().toISOString();
+      t.status='closed';t.closed=new Date().toISOString();t.closedDay=today();
       const win=t.side==='CALL'?d.price>t.entry:d.price<t.entry;
       const draw=d.price===t.entry;
       t.pnl=draw?0:win?t.stake*t.payout/100:-t.stake;t.exit=d.price;t.result=draw?'draw':win?'win':'loss';state.balance+=t.pnl;
