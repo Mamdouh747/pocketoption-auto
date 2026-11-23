@@ -44,7 +44,7 @@
       '<label>أقصى صفقات مفتوحة<select id="aeMaxOpen">'+[1,2,3,4,5,6].map(v=>'<option value="'+v+'" '+(Number(state.maxOpenTrades)===v?'selected':'')+'>'+v+'</option>').join('')+'</select></label></div>'+
       (halt?'<div class="ae-stop">توقف وقائي: '+(lossStreak()>=3?'3 خسائر متتالية':'تم بلوغ حد خسارة اليوم')+'. لن يفتح المحرك صفقات جديدة حتى اليوم التالي.</div>':'')+
       '<div class="ae-actions"><button id="aeToggle" class="'+(state.enabled?'ae-stopbtn':'ae-start')+'">'+(state.enabled?'إيقاف المحرك':'تشغيل Auto Engine')+'</button><button id="aeReset">إعادة ضبط الرصيد الافتراضي</button></div>'+
-      '<div class="ae-limits">حجم الصفقة الافتراضي: <b>'+money(stake())+'$</b> · حد خسارة اليوم: <b>'+money(lossLimit())+'$</b> · تأكيدان متتاليان · مهلة 180 ثانية لكل أصل</div>'+
+      '<div class="ae-limits">حجم الصفقة الافتراضي: <b>'+money(stake())+'$</b> · حد خسارة اليوم: <b>'+money(lossLimit())+'$</b> · جودة لا تقل عن 80/100 · تأكيدان متتاليان · مهلة 180 ثانية لكل أصل</div>'+
       '<div class="ae-limits">تشخيص الربط: <b>'+metrics.received+'</b> مستلمة · <b>'+metrics.fresh+'</b> حديثة · <b>'+metrics.entered+'</b> دخول · '+esc(metrics.skipped)+' · '+esc(metrics.last)+'</div>'+
       '<div class="ae-head"><b>سجل المحاكاة</b></div>'+(rows||'<p class="ae-note">لا توجد صفقات افتراضية بعد. شغّل الماسح ثم المحرك.</p>')+
       '<p class="ae-note">نتائج المحاكاة تقديرية فقط. التعادل يسجل بصفر، والإغلاق يتم عند أول سعر حديث بعد انتهاء المدة؛ لا تمثل هذه النتائج تسوية Pocket Option أو OTC أو فروق الأسعار والعمولات.</p>';
@@ -82,6 +82,7 @@
     const halt=(lossLimit()>0&&dayPnl()<=-lossLimit())||lossStreak()>=3;
     if(!state.enabled)metrics.skipped='المحرك متوقف';
     else if(sig==='WAIT')metrics.skipped='الإشارة WAIT';
+    else if(!Number.isFinite(d.confidence)||d.confidence<80)metrics.skipped='جودة الإشارة أقل من 80/100؛ تم رفض الدخول';
     else if(!c||c.count<2)metrics.skipped='بانتظار تأكيد الإشارة للمرة الثانية';
     else if(state.lastSignalByAsset?.[d.asset]===sig)metrics.skipped='تم الدخول سابقاً على الإشارة نفسها؛ انتظر WAIT أو انعكاساً';
     else if(now-lastEntry<180000)metrics.skipped='فترة حماية 180 ثانية لهذا الأصل';
@@ -90,7 +91,7 @@
     else if(openTrades().length>=Number(state.maxOpenTrades||4))metrics.skipped='تم بلوغ الحد الأقصى للصفقات المفتوحة';
     else if(!(stake()>0&&state.balance>0))metrics.skipped='الرصيد أو مبلغ الصفقة غير صالح';
     else {
-      state.trades.unshift({asset:d.asset,side:sig,entry:d.price,stake:Math.min(stake(),state.balance),payout:state.payout,duration:state.duration,reason:String(d.reason||'توافق EMA وRSI والزخم'),rsi:Number.isFinite(d.rsi)?d.rsi:null,opened:new Date().toISOString(),openedMs:now,day:today(),status:'open',pnl:0});
+      state.trades.unshift({asset:d.asset,side:sig,entry:d.price,stake:Math.min(stake(),state.balance),payout:state.payout,duration:state.duration,reason:String(d.reason||'توافق EMA وRSI والزخم'),confidence:d.confidence,rsi:Number.isFinite(d.rsi)?d.rsi:null,opened:new Date().toISOString(),openedMs:now,day:today(),status:'open',pnl:0});
       state.lastEntryByAsset={...(state.lastEntryByAsset||{}),[d.asset]:now};
       state.lastSignalByAsset={...(state.lastSignalByAsset||{}),[d.asset]:sig};
       metrics.entered++;metrics.skipped='تم فتح صفقة افتراضية بعد تأكيدين';

@@ -14,14 +14,27 @@
     });
     await Promise.all(workers);
   };
+  // Quality score is a filter, NOT a predicted win probability.
   const calculate = prices => {
-    if (prices.length < 30) return {signal:'WAIT',reason:'نحتاج 30 شمعة مكتملة',rsi:null};
-    const e5 = ema(prices,5), e13 = ema(prices,13);
-    const rv = rsi(prices,7), mom = prices[prices.length-1] - prices[prices.length-4];
-    if (![e5,e13,rv,mom].every(Number.isFinite)) return {signal:'WAIT',reason:'بيانات غير مكتملة',rsi:rv};
-    if (e5 > e13 && rv >= 55 && rv <= 66 && mom > 0) return {signal:'CALL',reason:'EMA5 أعلى من EMA13 · RSI بين 55 و66 · زخم إيجابي',rsi:rv};
-    if (e5 < e13 && rv >= 34 && rv <= 45 && mom < 0) return {signal:'PUT',reason:'EMA5 أسفل EMA13 · RSI بين 34 و45 · زخم سلبي',rsi:rv};
-    return {signal:'WAIT',reason:'الشروط غير مكتملة',rsi:rv};
+    if (prices.length < 30) return {signal:'WAIT',reason:'نحتاج 30 شمعة مكتملة',rsi:null,confidence:0};
+    const e5=ema(prices,5), e13=ema(prices,13), rv=rsi(prices,7);
+    const mom=prices[prices.length-1]-prices[prices.length-4];
+    if (![e5,e13,rv,mom].every(Number.isFinite)) return {signal:'WAIT',reason:'بيانات غير مكتملة',rsi:rv,confidence:0};
+    const tail=prices.slice(-7), diffs=tail.slice(1).map((v,i)=>v-tail[i]);
+    const up=diffs.filter(v=>v>0).length, down=diffs.filter(v=>v<0).length;
+    const moves=prices.slice(-21).slice(1).map((v,i)=>Math.abs(v-prices.slice(-21)[i]));
+    const avgMove=moves.reduce((a,b)=>a+b,0)/(moves.length||1);
+    const volatilityRatio=avgMove>0?Math.abs(mom)/(avgMove*3):0;
+    const bullish=e5>e13&&rv>=55&&rv<=67&&mom>0;
+    const bearish=e5<e13&&rv>=33&&rv<=45&&mom<0;
+    const aligned=bullish?up>=5:bearish?down>=5:false;
+    const separated=avgMove>0&&Math.abs(e5-e13)>=avgMove*.35;
+    const volatilityOk=volatilityRatio>=.35&&volatilityRatio<=2.5;
+    const score=(e5!==e13?20:0)+((bullish&&rv>=55&&rv<=67)||(bearish&&rv>=33&&rv<=45)?20:0)+((bullish&&mom>0)||(bearish&&mom<0)?20:0)+(aligned?20:0)+(separated&&volatilityOk?20:0);
+    const candidate=bullish?'CALL':bearish?'PUT':'WAIT';
+    const signal=candidate!=='WAIT'&&score>=80?candidate:'WAIT';
+    const reason=signal==='WAIT'?(candidate==='WAIT'?'اتجاه غير واضح':'جودة الإشارة '+score+'/100؛ يلزم 80 على الأقل'):'توافق '+score+'/100 · اتجاه وزخم واستمرارية وتقلب مقبول';
+    return {signal,reason,rsi:rv,confidence:score};
   };
   const render = () => {
     const items = assets.map(([asset,label]) => {
@@ -71,7 +84,7 @@
       if (s.prices.length>180) s.prices.shift();
       s.price=p; s.time=t; s.source=d.source||'biquote';
       const result=calculate(s.prices);
-      s.signal=result.signal; s.reason=result.reason; s.rsi=result.rsi;
+      s.signal=result.signal; s.reason=result.reason; s.rsi=result.rsi; s.confidence=result.confidence;
       if (s.signal!=='WAIT' && (s.signal!==s.lastSignal || Date.now()-s.lastAt>60000)) {
         logs.unshift({date:new Date().toLocaleString('ar-SA'),asset,symbol:s.symbol,signal:s.signal,price:p.toFixed(5),rsi:result.rsi==null?'':result.rsi.toFixed(1)});
         logs=logs.slice(0,500); s.lastSignal=s.signal; s.lastAt=Date.now();
@@ -79,7 +92,7 @@
       }
     } catch (e) { s.signal='WAIT'; s.reason=e.message; }
     state.set(asset,s);
-    window.dispatchEvent(new CustomEvent('po:scan-update', {detail:{asset,signal:s.signal||'WAIT',price:Number.isFinite(s.price)?s.price:null,time:s.time||0,source:s.source||'',reason:s.reason||'',rsi:Number.isFinite(s.rsi)?s.rsi:null}}));
+    window.dispatchEvent(new CustomEvent('po:scan-update', {detail:{asset,signal:s.signal||'WAIT',price:Number.isFinite(s.price)?s.price:null,time:s.time||0,source:s.source||'',reason:s.reason||'',rsi:Number.isFinite(s.rsi)?s.rsi:null,confidence:Number.isFinite(s.confidence)?s.confidence:0}}));
   };
   const cycle = async () => {
     if (!running || cycleBusy) return;
