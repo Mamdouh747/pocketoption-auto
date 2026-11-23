@@ -32,7 +32,7 @@
     const closedToday=state.trades.filter(t=>t.status==='closed'&&closedDay(t)===today());
     const wins=closedToday.filter(t=>Number(t.pnl)>0).length,losses=closedToday.filter(t=>Number(t.pnl)<0).length,draws=closedToday.filter(t=>t.result==='draw').length;
     const decisive=wins+losses,winRate=decisive?Math.round(wins/decisive*100):0;
-    const rows=state.trades.slice(0,12).map(t=>'<div class="ae-row"><span><b>'+esc(t.asset)+' · '+t.side+'</b><small>'+new Date(t.opened).toLocaleTimeString('ar-SA')+' · '+money(t.stake)+'$ · '+t.duration+'ث</small></span><b class="'+(t.status==='open'?'ae-open':t.result==='draw'?'ae-open':t.pnl>0?'ae-win':'ae-loss')+'">'+(t.status==='open'?'مفتوحة':t.result==='draw'?'تعادل · 0.00$':signedMoney(t.pnl))+'</b></div>').join('');
+    const rows=state.trades.slice(0,12).map(t=>'<div class="ae-row"><span><b>'+esc(t.asset)+' · '+t.side+'</b><small>'+new Date(t.opened).toLocaleTimeString('ar-SA')+' · '+money(t.stake)+'$ · '+t.duration+'ث</small><small>'+esc(t.reason||'سبب الدخول غير مسجل')+(t.resultReason?' · '+esc(t.resultReason):'')+'</small></span><b class="'+(t.status==='open'?'ae-open':t.result==='draw'?'ae-open':t.pnl>0?'ae-win':'ae-loss')+'">'+(t.status==='open'?'مفتوحة':t.result==='draw'?'تعادل · 0.00$':signedMoney(t.pnl))+'</b></div>').join('');
     root.innerHTML='<div class="ae-head"><b>محرك التداول الآلي · Demo PRO</b><span class="ae-tag">محاكاة فقط</span></div>'+
       '<p class="ae-note">محرك تجريبي محلي. لا يتصل بحساب Pocket Option ولا يرسل أوامر حقيقية. يلزم تأكيد الإشارة مرتين قبل فتح صفقة افتراضية.</p>'+
       '<div class="ae-stats"><div><small>الرصيد الافتراضي</small><b>'+money(state.balance)+'$</b></div><div><small>نتيجة اليوم</small><b class="'+(pnl>=0?'ae-win':'ae-loss')+'">'+signedMoney(pnl)+'</b></div><div><small>مفتوحة</small><b>'+openTrades().length+' / '+state.maxOpenTrades+'</b></div></div>'+
@@ -70,7 +70,7 @@
       t.status='closed';t.closed=new Date().toISOString();t.closedDay=today();
       const win=t.side==='CALL'?d.price>t.entry:d.price<t.entry;
       const draw=d.price===t.entry;
-      t.pnl=draw?0:win?t.stake*t.payout/100:-t.stake;t.exit=d.price;t.result=draw?'draw':win?'win':'loss';state.balance+=t.pnl;
+      t.pnl=draw?0:win?t.stake*t.payout/100:-t.stake;t.exit=d.price;t.result=draw?'draw':win?'win':'loss';t.resultReason=draw?'سعر الإغلاق ساوى سعر الدخول':win?'تحرك السعر في اتجاه الصفقة':'تحرك السعر عكس اتجاه الصفقة';state.balance+=t.pnl;
     }
     const sig=d.signal==='CALL'||d.signal==='PUT'?d.signal:'WAIT';
     if(sig==='WAIT'){delete confirmations[d.asset];if(state.lastSignalByAsset)delete state.lastSignalByAsset[d.asset];}
@@ -90,7 +90,7 @@
     else if(openTrades().length>=Number(state.maxOpenTrades||4))metrics.skipped='تم بلوغ الحد الأقصى للصفقات المفتوحة';
     else if(!(stake()>0&&state.balance>0))metrics.skipped='الرصيد أو مبلغ الصفقة غير صالح';
     else {
-      state.trades.unshift({asset:d.asset,side:sig,entry:d.price,stake:Math.min(stake(),state.balance),payout:state.payout,duration:state.duration,opened:new Date().toISOString(),openedMs:now,day:today(),status:'open',pnl:0});
+      state.trades.unshift({asset:d.asset,side:sig,entry:d.price,stake:Math.min(stake(),state.balance),payout:state.payout,duration:state.duration,reason:String(d.reason||'توافق EMA وRSI والزخم'),rsi:Number.isFinite(d.rsi)?d.rsi:null,opened:new Date().toISOString(),openedMs:now,day:today(),status:'open',pnl:0});
       state.lastEntryByAsset={...(state.lastEntryByAsset||{}),[d.asset]:now};
       state.lastSignalByAsset={...(state.lastSignalByAsset||{}),[d.asset]:sig};
       metrics.entered++;metrics.skipped='تم فتح صفقة افتراضية بعد تأكيدين';
