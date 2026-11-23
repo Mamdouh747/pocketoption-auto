@@ -19,8 +19,8 @@
     const e5 = ema(prices,5), e13 = ema(prices,13);
     const rv = rsi(prices,7), mom = prices[prices.length-1] - prices[prices.length-4];
     if (![e5,e13,rv,mom].every(Number.isFinite)) return {signal:'WAIT',reason:'بيانات غير مكتملة',rsi:rv};
-    if (e5 > e13 && rv >= 50 && rv <= 70 && mom > 0) return {signal:'CALL',reason:'اتجاه صاعد وزخم إيجابي',rsi:rv};
-    if (e5 < e13 && rv >= 30 && rv < 50 && mom < 0) return {signal:'PUT',reason:'اتجاه هابط وزخم سلبي',rsi:rv};
+    if (e5 > e13 && rv >= 55 && rv <= 66 && mom > 0) return {signal:'CALL',reason:'EMA5 أعلى من EMA13 · RSI بين 55 و66 · زخم إيجابي',rsi:rv};
+    if (e5 < e13 && rv >= 34 && rv <= 45 && mom < 0) return {signal:'PUT',reason:'EMA5 أسفل EMA13 · RSI بين 34 و45 · زخم سلبي',rsi:rv};
     return {signal:'WAIT',reason:'الشروط غير مكتملة',rsi:rv};
   };
   const render = () => {
@@ -71,7 +71,7 @@
       if (s.prices.length>180) s.prices.shift();
       s.price=p; s.time=t; s.source=d.source||'biquote';
       const result=calculate(s.prices);
-      s.signal=result.signal; s.reason=result.reason;
+      s.signal=result.signal; s.reason=result.reason; s.rsi=result.rsi;
       if (s.signal!=='WAIT' && (s.signal!==s.lastSignal || Date.now()-s.lastAt>60000)) {
         logs.unshift({date:new Date().toLocaleString('ar-SA'),asset,symbol:s.symbol,signal:s.signal,price:p.toFixed(5),rsi:result.rsi==null?'':result.rsi.toFixed(1)});
         logs=logs.slice(0,500); s.lastSignal=s.signal; s.lastAt=Date.now();
@@ -79,7 +79,7 @@
       }
     } catch (e) { s.signal='WAIT'; s.reason=e.message; }
     state.set(asset,s);
-    window.dispatchEvent(new CustomEvent('po:scan-update', {detail:{asset,signal:s.signal||'WAIT',price:Number.isFinite(s.price)?s.price:null,time:s.time||0,source:s.source||'',reason:s.reason||''}}));
+    window.dispatchEvent(new CustomEvent('po:scan-update', {detail:{asset,signal:s.signal||'WAIT',price:Number.isFinite(s.price)?s.price:null,time:s.time||0,source:s.source||'',reason:s.reason||'',rsi:Number.isFinite(s.rsi)?s.rsi:null}}));
   };
   const cycle = async () => {
     if (!running || cycleBusy) return;
